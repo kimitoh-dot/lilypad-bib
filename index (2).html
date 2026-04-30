@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lily Pad Bibliography</title>
+  <style>
+    @font-face {
+      font-family: 'Roundhand';
+      src: url('https://db.onlinewebfonts.com/t/e16a313cd0d10a8be8499ebef0892570.woff2') format('woff2'),
+           url('https://db.onlinewebfonts.com/t/e16a313cd0d10a8be8499ebef0892570.woff') format('woff'),
+           url('https://db.onlinewebfonts.com/t/e16a313cd0d10a8be8499ebef0892570.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'NintendoDS';
+      src: url('fonts/nintendo-ds-bios.woff2') format('woff2'),
+           url('fonts/nintendo-ds-bios.woff') format('woff'),
+           url('fonts/nintendo-ds-bios.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --pink: #f3d3e2;
+      --pink-glow: rgba(243, 211, 226, 0.8);
+      --green-glow: rgba(120, 180, 80, 0.5);
+      --text: #3a2a2a;
+    }
+
+    body {
+      background: #ffffff;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: 'NintendoDS', monospace;
+      cursor: default;
+    }
+
+    /* SORT BAR */
+    .sort-bar {
+      position: fixed;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sort-label {
+      font-family: 'Roundhand', cursive;
+      font-size: 13px;
+      color: #c9a0b8;
+      letter-spacing: 0.05em;
+    }
+
+    .sort-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .sort-btn {
+      font-family: 'NintendoDS', monospace;
+      font-size: 11px;
+      color: #c9a0b8;
+      background: transparent;
+      border: 1.5px solid var(--pink);
+      border-radius: 999px;
+      padding: 6px 22px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 0.04em;
+      outline: none;
+    }
+
+    .sort-btn:hover,
+    .sort-btn.active {
+      background: var(--pink);
+      color: #7a4a5a;
+      box-shadow:
+        0 0 8px var(--pink-glow),
+        0 0 20px var(--pink-glow),
+        0 0 40px rgba(243, 211, 226, 0.3);
+    }
+
+    /* POND */
+    .pond {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* LILY PAD */
+    .lily {
+      position: absolute;
+      cursor: pointer;
+      transform-origin: center;
+      transition: filter 0.3s ease, transform 0.3s ease;
+      user-select: none;
+    }
+
+    .lily img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .lily:hover {
+      filter:
+        drop-shadow(0 0 6px rgba(120, 200, 80, 0.7))
+        drop-shadow(0 0 16px rgba(120, 200, 80, 0.4))
+        drop-shadow(0 0 30px rgba(180, 230, 100, 0.3))
+        brightness(1.1);
+      transform: scale(1.06);
+      z-index: 50;
+    }
+
+    .lily.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.7);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .lily.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.4s ease, transform 0.4s ease, left 0.8s cubic-bezier(0.34,1.56,0.64,1), top 0.8s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    /* TOOLTIP */
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 200;
+      background: rgba(255,255,255,0.92);
+      border: 1.5px solid var(--pink);
+      border-radius: 12px;
+      padding: 12px 16px;
+      max-width: 240px;
+      box-shadow: 0 4px 24px rgba(243, 211, 226, 0.5);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .tooltip.show {
+      opacity: 1;
+    }
+
+    .tooltip-author {
+      font-family: 'Roundhand', cursive;
+      font-size: 13px;
+      color: #c9a0b8;
+      margin-bottom: 4px;
+    }
+
+    .tooltip-title {
+      font-family: 'NintendoDS', monospace;
+      font-size: 10px;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+
+    .tooltip-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .tooltip-tag {
+      font-family: 'NintendoDS', monospace;
+      font-size: 8px;
+      background: var(--pink);
+      color: #7a4a5a;
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+
+    .tooltip-meta {
+      font-family: 'NintendoDS', monospace;
+      font-size: 8px;
+      color: #aaa;
+      margin-top: 6px;
+    }
+
+    /* FILTER DROPDOWN */
+    .filter-dropdown {
+      position: fixed;
+      background: white;
+      border: 1.5px solid var(--pink);
+      border-radius: 12px;
+      padding: 10px;
+      z-index: 150;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 20px rgba(243,211,226,0.4);
+      min-width: 160px;
+    }
+
+    .filter-dropdown.open {
+      display: flex;
+    }
+
+    .filter-option {
+      font-family: 'NintendoDS', monospace;
+      font-size: 9px;
+      color: #9a6a7a;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .filter-option:hover,
+    .filter-option.selected {
+      background: var(--pink);
+      color: #7a4a5a;
+    }
+  </style>
+</head>
+<body>
+
+<!-- SORT BAR -->
+<div class="sort-bar">
+  <span class="sort-label">Sort by</span>
+  <div class="sort-buttons">
+    <button class="sort-btn active" data-sort="all">All</button>
+    <button class="sort-btn" data-sort="type">Type</button>
+    <button class="sort-btn" data-sort="themes">Themes</button>
+    <button class="sort-btn" data-sort="scale">Scale</button>
+  </div>
+</div>
+
+<!-- FILTER DROPDOWN -->
+<div class="filter-dropdown" id="filterDropdown"></div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-author" id="tt-author"></div>
+  <div class="tooltip-title" id="tt-title"></div>
+  <div class="tooltip-tags" id="tt-tags"></div>
+  <div class="tooltip-meta" id="tt-meta"></div>
+</div>
+
+<!-- POND -->
+<div class="pond" id="pond"></div>
+
+<script>
+// REFERENCE DATA - edit to match your bibliography
+const refs = [
+  {
+    author: "Susan Stewart",
+    title: "On Longing: Narratives of the Miniature, the Gigantic, the Souvenir, the Collection",
+    type: "text",
+    year: 1993,
+    themes: ["nostalgia", "archiving"],
+    scale: "macro",
+    img: "lilypads/lilypad1.png"
+  },
+  {
+    author: "Skuja Braden",
+    title: "Time Stream",
+    type: "project",
+    year: 2023,
+    themes: ["ephemerality"],
+    scale: "micro",
+    img: "lilypads/lilypad2.png"
+  },
+  {
+    author: "Svetlana Boym",
+    title: "The Future of Nostalgia",
+    type: "text",
+    year: 2001,
+    themes: ["nostalgia", "archiving", "cultural ownership"],
+    scale: "macro",
+    img: "lilypads/lilypad3.png"
+  },
+  {
+    author: "Roland Barthes",
+    title: "Death of the Author",
+    type: "text",
+    year: 1977,
+    themes: ["internet culture", "visual culture"],
+    scale: "macro",
+    img: "lilypads/lilypad4.png"
+  },
+  {
+    author: "Hito Steyerl",
+    title: "In Defense of the Poor Image",
+    type: "text",
+    year: 2009,
+    themes: ["visual culture", "internet culture", "ephemerality"],
+    scale: "mid",
+    img: "lilypads/lilypad5.png"
+  },
+  {
+    author: "Cricket Guest",
+    title: "Capitalist Necromancy & The Danger of Nostalgia as Merchandise",
+    type: "essay",
+    year: 2025,
+    themes: ["nostalgia", "trend machine", "internet culture", "consumerism"],
+    scale: "mid",
+    img: "lilypads/lilypad6.png"
+  },
+  {
+    author: "Amy Francombe",
+    title: "No one is bored and everything is boring",
+    type: "essay",
+    year: 2025,
+    themes: ["nostalgia", "trend machine", "internet culture"],
+    scale: "mid",
+    img: "lilypads/lilypad7.png"
+  },
+  {
+    author: "Sam Jacob",
+    title: "Nostalgia for the New",
+    type: "article",
+    year: 2012,
+    themes: ["nostalgia", "internet culture", "visual culture"],
+    scale: "mid",
+    img: "lilypads/lilypad8.png"
+  },
+  {
+    author: "Philippe Pamela Dungao",
+    title: "Nostalgia for Permanence",
+    type: "article",
+    year: 2018,
+    themes: ["visual culture", "ephemerality", "archiving"],
+    scale: "micro",
+    img: "lilypads/lilypad9.png"
+  },
+  {
+    author: "Philip Cornwell-Smith",
+    title: "Very Thai: Everyday Popular Culture",
+    type: "project",
+    year: 2005,
+    themes: ["visual culture", "cultural ownership", "nostalgia"],
+    scale: "micro",
+    img: "lilypads/lilypad1.png"  // reuse until you have 17 unique pngs
+  },
+  {
+    author: "Takashi Murakami",
+    title: "Superflat Manifesto",
+    type: "practice",
+    year: 2000,
+    themes: ["trend machine", "cultural ownership", "consumerism", "visual culture"],
+    scale: "macro",
+    img: "lilypads/lilypad2.png"
+  },
+  {
+    author: "Olia Lialina",
+    title: "On The Internet Everyone Knows You Had a Dog",
+    type: "project",
+    year: 2015,
+    themes: ["internet culture", "ephemerality", "archiving", "trend machine"],
+    scale: "mid",
+    img: "lilypads/lilypad3.png"
+  },
+  {
+    author: "Mark Fisher",
+    title: "Ghosts of My Life",
+    type: "text",
+    year: 2014,
+    themes: ["nostalgia", "ephemerality", "trend machine", "internet culture"],
+    scale: "macro",
+    img: "lilypads/lilypad4.png"
+  },
+  {
+    author: "Dick Hebdige",
+    title: "Subculture: The Meaning of Style",
+    type: "text",
+    year: 1979,
+    themes: ["trend machine", "consumerism", "cultural ownership", "visual culture"],
+    scale: "macro",
+    img: "lilypads/lilypad5.png"
+  },
+  {
+    author: "Ian Lynam",
+    title: "Why We Should Really Be Concerned About the Visual Identity for the Tokyo Olympics",
+    type: "article",
+    year: 2015,
+    themes: ["visual culture", "cultural ownership", "consumerism"],
+    scale: "mid",
+    img: "lilypads/lilypad6.png"
+  },
+  {
+    author: "Aya Takano",
+    title: "how far how deep we can go",
+    type: "practice",
+    year: 2001,
+    themes: ["visual culture", "nostalgia", "cultural ownership"],
+    scale: "micro",
+    img: "lilypads/lilypad7.png"
+  },
+  {
+    author: "Cameron Askin",
+    title: "Cameron's World",
+    type: "project",
+    year: 2015,
+    themes: ["ephemerality", "archiving", "internet culture", "visual culture"],
+    scale: "micro",
+    img: "lilypads/lilypad8.png"
+  }
+];
+
+// SIZES - flowers smaller, pads larger
+const sizes = [110, 120, 130, 140, 100, 115, 125, 135, 108, 118, 128, 138, 105, 122, 132, 112, 126];
+
+// STATE
+let currentSort = "all";
+let currentFilter = null;
+let animFrames = [];
+
+const pond = document.getElementById("pond");
+const tooltip = document.getElementById("tooltip");
+const dropdown = document.getElementById("filterDropdown");
+
+// BUILD LILY ELEMENTS
+const lilies = refs.map((ref, i) => {
+  const el = document.createElement("div");
+  el.className = "lily visible";
+  const sz = sizes[i] || 120;
+  el.style.width = sz + "px";
+  el.style.height = sz + "px";
+
+  const img = document.createElement("img");
+  img.src = ref.img;
+  img.alt = ref.title;
+  img.draggable = false;
+  el.appendChild(img);
+
+  pond.appendChild(el);
+
+  // tooltip
+  el.addEventListener("mouseenter", (e) => showTooltip(e, ref));
+  el.addEventListener("mousemove", (e) => moveTooltip(e));
+  el.addEventListener("mouseleave", () => hideTooltip());
+
+  return { el, ref, sz };
+});
+
+// FLOATING ANIMATION
+// Each lily gets a random floating state
+const floatStates = lilies.map((l, i) => ({
+  x: 100 + Math.random() * (window.innerWidth - 250),
+  y: 120 + Math.random() * (window.innerHeight - 250),
+  vx: (Math.random() - 0.5) * 0.3,
+  vy: (Math.random() - 0.5) * 0.3,
+  angle: Math.random() * 360,
+  angleSpeed: (Math.random() - 0.5) * 0.08,
+  bobPhase: Math.random() * Math.PI * 2,
+  bobSpeed: 0.003 + Math.random() * 0.004,
+  bobAmp: 1.5 + Math.random() * 2
+}));
+
+function animate(ts) {
+  lilies.forEach((l, i) => {
+    if (l.el.classList.contains("hidden")) return;
+    const s = floatStates[i];
+
+    s.x += s.vx;
+    s.y += s.vy;
+    s.angle += s.angleSpeed;
+    s.bobPhase += s.bobSpeed;
+
+    // gentle bounce off edges
+    const margin = 60;
+    if (s.x < margin) { s.vx = Math.abs(s.vx); }
+    if (s.x > window.innerWidth - l.sz - margin) { s.vx = -Math.abs(s.vx); }
+    if (s.y < 100) { s.vy = Math.abs(s.vy); }
+    if (s.y > window.innerHeight - l.sz - margin) { s.vy = -Math.abs(s.vy); }
+
+    const bob = Math.sin(s.bobPhase) * s.bobAmp;
+
+    l.el.style.left = s.x + "px";
+    l.el.style.top = (s.y + bob) + "px";
+    l.el.style.transform = `rotate(${s.angle}deg)`;
+  });
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// SORT / FILTER LOGIC
+const sortBtns = document.querySelectorAll(".sort-btn");
+
+function getUniqueValues(key) {
+  const vals = new Set();
+  refs.forEach(r => {
+    if (Array.isArray(r[key])) r[key].forEach(v => vals.add(v));
+    else vals.add(String(r[key]));
+  });
+  return [...vals].sort();
+}
+
+function applyFilter(sortKey, filterVal) {
+  lilies.forEach(({ el, ref }) => {
+    let show = true;
+    if (filterVal) {
+      if (Array.isArray(ref[sortKey])) {
+        show = ref[sortKey].includes(filterVal);
+      } else {
+        show = String(ref[sortKey]) === filterVal;
+      }
+    }
+    el.classList.toggle("hidden", !show);
+    el.classList.toggle("visible", show);
+  });
+}
+
+function showDropdown(btn, sortKey) {
+  const vals = getUniqueValues(sortKey);
+  dropdown.innerHTML = "";
+
+  // "All" option
+  const allOpt = document.createElement("div");
+  allOpt.className = "filter-option" + (currentFilter === null ? " selected" : "");
+  allOpt.textContent = "All";
+  allOpt.addEventListener("click", () => {
+    currentFilter = null;
+    applyFilter(sortKey, null);
+    dropdown.classList.remove("open");
+    dropdown.querySelectorAll(".filter-option").forEach(o => o.classList.remove("selected"));
+    allOpt.classList.add("selected");
+  });
+  dropdown.appendChild(allOpt);
+
+  vals.forEach(v => {
+    const opt = document.createElement("div");
+    opt.className = "filter-option" + (currentFilter === v ? " selected" : "");
+    opt.textContent = v;
+    opt.addEventListener("click", () => {
+      currentFilter = v;
+      applyFilter(sortKey, v);
+      dropdown.classList.remove("open");
+    });
+    dropdown.appendChild(opt);
+  });
+
+  const rect = btn.getBoundingClientRect();
+  dropdown.style.top = (rect.bottom + 8) + "px";
+  dropdown.style.left = rect.left + "px";
+  dropdown.classList.add("open");
+}
+
+sortBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    sortBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    dropdown.classList.remove("open");
+
+    const sort = btn.dataset.sort;
+    currentSort = sort;
+    currentFilter = null;
+
+    if (sort === "all") {
+      applyFilter(null, null);
+    } else {
+      showDropdown(btn, sort);
+    }
+  });
+});
+
+// close dropdown on outside click
+document.addEventListener("click", (e) => {
+  if (!dropdown.contains(e.target) && !e.target.classList.contains("sort-btn")) {
+    dropdown.classList.remove("open");
+  }
+});
+
+// TOOLTIP
+function showTooltip(e, ref) {
+  document.getElementById("tt-author").textContent = ref.author;
+  document.getElementById("tt-title").textContent = ref.title;
+  document.getElementById("tt-meta").textContent = ref.type + " · " + ref.year + " · " + ref.scale;
+
+  const tagsEl = document.getElementById("tt-tags");
+  tagsEl.innerHTML = "";
+  ref.themes.forEach(t => {
+    const span = document.createElement("span");
+    span.className = "tooltip-tag";
+    span.textContent = t;
+    tagsEl.appendChild(span);
+  });
+
+  tooltip.classList.add("show");
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  let x = e.clientX + 16;
+  let y = e.clientY + 16;
+  if (x + 260 > window.innerWidth) x = e.clientX - 260;
+  if (y + 160 > window.innerHeight) y = e.clientY - 160;
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+}
+
+function hideTooltip() {
+  tooltip.classList.remove("show");
+}
+</script>
+</body>
+</html>
